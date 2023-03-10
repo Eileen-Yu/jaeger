@@ -19,6 +19,7 @@ import (
 	"errors"
 	"fmt"
 	"strings"
+	"time"
 
 	grpc_retry "github.com/grpc-ecosystem/go-grpc-middleware/retry"
 	"go.uber.org/zap"
@@ -26,6 +27,7 @@ import (
 	"google.golang.org/grpc/connectivity"
 	"google.golang.org/grpc/credentials"
 	"google.golang.org/grpc/credentials/insecure"
+	"google.golang.org/grpc/keepalive"
 	"google.golang.org/grpc/resolver"
 	"google.golang.org/grpc/resolver/manual"
 
@@ -49,6 +51,10 @@ type ConnBuilder struct {
 	Discoverer        discovery.Discoverer
 
 	AdditionalDialOptions []grpc.DialOption
+
+	GrpcTimeDuration time.Duration
+	// GrpcTimeOut             time.Duration
+	// GrpcPermitWithoutStream bool
 }
 
 // NewConnBuilder creates a new grpc connection builder.
@@ -96,9 +102,16 @@ func (b *ConnBuilder) CreateConnection(logger *zap.Logger, mFactory metrics.Fact
 			dialTarget = b.CollectorHostPorts[0]
 		}
 	}
+
+	keepaliveParams := keepalive.ClientParameters{
+		Time: b.GrpcTimeDuration,
+	}
+	// TODO: fill in based on flag
+
 	dialOptions = append(dialOptions, grpc.WithDefaultServiceConfig(grpcresolver.GRPCServiceConfig))
 	dialOptions = append(dialOptions, grpc.WithUnaryInterceptor(grpc_retry.UnaryClientInterceptor(grpc_retry.WithMax(b.MaxRetry))))
 	dialOptions = append(dialOptions, b.AdditionalDialOptions...)
+	dialOptions = append(dialOptions, grpc.WithKeepaliveParams(keepaliveParams))
 
 	conn, err := grpc.Dial(dialTarget, dialOptions...)
 	if err != nil {

@@ -18,6 +18,7 @@ import (
 	"flag"
 	"fmt"
 	"strings"
+	"time"
 
 	"github.com/spf13/viper"
 
@@ -30,11 +31,14 @@ const (
 	retry             = gRPCPrefix + ".retry.max"
 	defaultMaxRetry   = 3
 	discoveryMinPeers = gRPCPrefix + ".discovery.min-peers"
+	grpcTimeDuration  = gRPCPrefix + ".client.time"
 )
 
 var tlsFlagsConfig = tlscfg.ClientFlagsConfig{
 	Prefix: gRPCPrefix,
 }
+
+var grpcDefaultTime time.Duration = time.Minute
 
 // AddFlags adds flags for Options.
 func AddFlags(flags *flag.FlagSet) {
@@ -42,6 +46,7 @@ func AddFlags(flags *flag.FlagSet) {
 	flags.Int(discoveryMinPeers, 3, "Max number of collectors to which the agent will try to connect at any given time")
 	flags.String(collectorHostPort, "", "Comma-separated string representing host:port of a static list of collectors to connect to directly")
 	tlsFlagsConfig.AddFlags(flags)
+	flags.Duration(grpcTimeDuration, grpcDefaultTime, "Grpc client parameters Time")
 }
 
 // InitFromViper initializes Options with properties retrieved from Viper.
@@ -57,5 +62,6 @@ func (b *ConnBuilder) InitFromViper(v *viper.Viper) (*ConnBuilder, error) {
 		return b, fmt.Errorf("failed to process TLS options: %w", err)
 	}
 	b.DiscoveryMinPeers = v.GetInt(discoveryMinPeers)
+	b.GrpcTimeDuration = v.GetDuration(grpcTimeDuration)
 	return b, nil
 }
